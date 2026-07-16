@@ -71,6 +71,35 @@ export default function App() {
     return () => clearInterval(t);
   }, []);
 
+  // Auto-login immediately if no token is present to bypass login screen and direct user straight to the diary app
+  useEffect(() => {
+    const performSilentAutoLogin = async () => {
+      if (!token) {
+        try {
+          const response = await fetch("/api/auth/auto-login", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              email: "kaurgurleen0202@gmail.com",
+              name: "gurleen",
+            }),
+          });
+          if (response.ok) {
+            const data = await response.json();
+            localStorage.setItem("ygg_token", data.token);
+            localStorage.setItem("ygg_user", JSON.stringify(data.user));
+            setToken(data.token);
+            setUser(data.user);
+            setActiveTab("diary");
+          }
+        } catch (err) {
+          console.error("Auto-login error:", err);
+        }
+      }
+    };
+    performSilentAutoLogin();
+  }, [token]);
+
   // Fetch all user records upon successful authentication
   useEffect(() => {
     if (token) {
