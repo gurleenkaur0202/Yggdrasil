@@ -1,0 +1,6 @@
+{
+  "name": "Yggdrasil - Digital Life Journal",
+  "description": "A premium, elegant, and secure digital life journal to save memories, goals, schedules, track habits, moods, and write letters to your future self with an integrated AI assistant.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
