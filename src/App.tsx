@@ -74,7 +74,7 @@ export default function App() {
   // Fetch all user records upon successful authentication
   useEffect(() => {
     if (token) {
-      fetchAllUserData();
+      fetchAllUserData(token);
     }
   }, [token]);
 
@@ -87,9 +87,11 @@ export default function App() {
     }
   }, [user]);
 
-  const fetchAllUserData = async () => {
+  const fetchAllUserData = async (activeToken?: string | null) => {
+    const currentToken = activeToken || token;
+    if (!currentToken) return;
     try {
-      const headers = { Authorization: `Bearer ${token}` };
+      const headers = { Authorization: `Bearer ${currentToken}` };
 
       const [entriesRes, tasksRes, habitsRes, lettersRes, bucketRes] = await Promise.all([
         fetch("/api/diary", { headers }),
@@ -486,13 +488,45 @@ export default function App() {
               <div className="absolute -bottom-12 -right-12 w-48 h-48 bg-[var(--accent-color)]/5 rounded-full blur-3xl pointer-events-none" />
 
               <div className="text-center space-y-2">
-                <div className="inline-flex p-3 rounded-2xl bg-white/5 border border-white/10 mb-2">
+                <div className="inline-flex p-3 rounded-2xl bg-white/5 border border-white/10 mb-1">
                   <TreePine className="w-8 h-8 text-[var(--primary-color)] animate-pulse" />
                 </div>
                 <h1 className="text-3xl font-display font-bold tracking-tight text-white">Yggdrasil</h1>
                 <p className="text-xs text-slate-400 max-w-xs mx-auto font-serif italic">
                   "The mythical World Tree that stores the thoughts, memories, and stories of every world."
                 </p>
+              </div>
+
+              {/* Navigation Tab Selector for Auth Modes */}
+              <div className="flex bg-black/40 p-1 rounded-xl border border-white/5">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setAuthMode("login");
+                    setAuthError("");
+                  }}
+                  className={`flex-1 py-2 text-center rounded-lg text-xs font-mono tracking-wider transition-all duration-200 ${
+                    authMode === "login"
+                      ? "bg-[var(--primary-color)] text-black font-semibold shadow"
+                      : "text-zinc-400 hover:text-white"
+                  }`}
+                >
+                  LOGIN CHAMBER
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setAuthMode("register");
+                    setAuthError("");
+                  }}
+                  className={`flex-1 py-2 text-center rounded-lg text-xs font-mono tracking-wider transition-all duration-200 ${
+                    authMode === "register"
+                      ? "bg-[var(--primary-color)] text-black font-semibold shadow"
+                      : "text-zinc-400 hover:text-white"
+                  }`}
+                >
+                  REGISTER ROOT
+                </button>
               </div>
 
               {authError && (
@@ -561,6 +595,7 @@ export default function App() {
 
               <div className="text-center pt-2 border-t border-white/5">
                 <button
+                  type="button"
                   onClick={() => {
                     setAuthMode(authMode === "login" ? "register" : "login");
                     setAuthError("");

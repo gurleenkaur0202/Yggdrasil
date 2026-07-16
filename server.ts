@@ -213,6 +213,11 @@ app.post("/api/auth/register", async (req, res) => {
     const db = await readDB();
     const existingUser = db.users.find((u) => u.email.toLowerCase() === email.toLowerCase());
     if (existingUser) {
+      if (existingUser.passwordHash === hashPassword(password)) {
+        const token = signToken({ userId: existingUser.id });
+        const { passwordHash, ...userResponse } = existingUser;
+        return res.status(200).json({ user: userResponse, token });
+      }
       return res.status(400).json({ error: "An account with this email already exists." });
     }
 
