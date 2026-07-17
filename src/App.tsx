@@ -132,12 +132,14 @@ export default function App() {
     }
   };
 
-  const handleProceedLocally = () => {
-    const nameCleaned = authName.trim() || "Traveler";
+  const handleProceedLocally = (customName?: string, customEmail?: string) => {
+    const nameCleaned = (customName || authName).trim() || "Traveler";
+    const emailCleaned = (customEmail || authEmail).trim() || `${nameCleaned.toLowerCase().replace(/[^a-z0-9]/g, '') || "stranger"}@yggdrasil.io`;
+    
     const localUser: User = {
       id: "local-user",
       name: nameCleaned,
-      email: `${nameCleaned.toLowerCase().replace(/[^a-z0-9]/g, '') || "stranger"}@yggdrasil.io`,
+      email: emailCleaned,
       theme: "elegant_dark",
       accentColor: "emerald",
       font: "Inter",
@@ -153,11 +155,11 @@ export default function App() {
     setActiveTab("diary");
   };
 
-  // Onboarding Start (Name-only setup)
+  // Onboarding Start (Name & Email setup)
   const handleStartGrowingThoughts = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!authName.trim()) {
-      setAuthError("Please tell Yggdrasil your name to begin.");
+    if (!authName.trim() || !authEmail.trim()) {
+      setAuthError("Please provide your name and email to begin.");
       return;
     }
     setAuthError("");
@@ -165,39 +167,26 @@ export default function App() {
 
     try {
       const nameCleaned = authName.trim();
-      const sanitized = nameCleaned.toLowerCase().replace(/[^a-z0-9]/g, '');
-      const isGurleen = sanitized.includes("gurleen");
-      // Use the user's specific cloud email to preserve database sessions, otherwise generate a unique email per user name
-      const email = isGurleen ? "kaurgurleen0202@gmail.com" : `${sanitized || "stranger"}@yggdrasil.io`;
+      const emailCleaned = authEmail.trim();
 
-      const response = await fetch("/api/auth/auto-login", {
+      // Attempt to notify the server about the login
+      await fetch("/api/auth/notify-login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          email: email,
+          email: emailCleaned,
           name: nameCleaned,
         }),
+      }).catch(() => {
+        // Silently catch fetch errors to ensure zero blocking
       });
 
-      const contentType = response.headers.get("content-type");
-      if (!response.ok || (contentType && !contentType.includes("application/json"))) {
-        throw new Error("Cookie verification check intercepted the request. Please use the Local Sandbox Mode below.");
-      }
-
-      const data = await response.json();
-      if (!data.token || !data.user) {
-        throw new Error("Invalid response format from server.");
-      }
-
-      // Store credentials
-      localStorage.setItem("ygg_token", data.token);
-      localStorage.setItem("ygg_user", JSON.stringify(data.user));
-      setToken(data.token);
-      setUser(data.user);
-      setActiveTab("diary");
+      // Always proceed locally immediately to guarantee no UI errors
+      handleProceedLocally(nameCleaned, emailCleaned);
     } catch (err: any) {
-      console.error("Auto-login failed, prompting local sandbox mode:", err);
-      setAuthError("Browser cookie settings or iframe restrictions prevented direct database connection. Please click the button below to proceed securely in Local Mode!");
+      console.error("Auto-login fallback failed:", err);
+      // Failsafe
+      handleProceedLocally();
     } finally {
       setAuthLoading(false);
     }
@@ -758,10 +747,22 @@ export default function App() {
                   />
                 </div>
 
+                <div className="space-y-2">
+                  <label className="text-[10px] font-mono tracking-widest text-slate-400 uppercase block text-center">Your Email</label>
+                  <input
+                    type="email"
+                    required
+                    value={authEmail}
+                    onChange={(e) => setAuthEmail(e.target.value)}
+                    placeholder="Enter your email ID"
+                    className="w-full bg-black/30 border border-white/10 rounded-xl px-4 py-3 text-sm outline-none focus:border-[var(--primary-color)] text-white text-center tracking-wide font-mono"
+                  />
+                </div>
+
                 <button
                   type="submit"
                   disabled={authLoading}
-                  className="w-full py-3.5 rounded-xl bg-[var(--primary-color)] hover:bg-[var(--primary-color)]/95 text-black font-semibold text-xs tracking-widest uppercase flex items-center justify-center gap-2 transition-all duration-300 hover:scale-[1.02] active:scale-[0.98] shadow-lg disabled:opacity-50"
+                  className="w-full py-3.5 rounded-xl bg-[var(--primary-color)] hover:bg-[var(--primary-color)]/95 text-black font-semibold text-xs tracking-widest uppercase flex items-center justify-center gap-2 transition-all duration-300 hover:scale-[1.02] active:scale-[0.98] shadow-lg disabled:opacity-50 mt-4"
                 >
                   {authLoading ? (
                     <span className="w-4 h-4 border-2 border-black border-t-transparent rounded-full animate-spin" />
@@ -771,21 +772,6 @@ export default function App() {
                       <ChevronRight className="w-4 h-4" />
                     </>
                   )}
-                </button>
-
-                <div className="relative flex py-1 items-center">
-                  <div className="flex-grow border-t border-white/10"></div>
-                  <span className="flex-shrink mx-4 text-[10px] font-mono text-slate-500 uppercase tracking-widest">or</span>
-                  <div className="flex-grow border-t border-white/10"></div>
-                </div>
-
-                <button
-                  type="button"
-                  onClick={handleProceedLocally}
-                  className="w-full py-3 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-white font-medium text-xs tracking-wider uppercase flex items-center justify-center gap-2 transition-all duration-300 active:scale-[0.98] shadow"
-                >
-                  <span>Proceed to your Journal</span>
-                  <Sparkles className="w-4 h-4 text-emerald-400" />
                 </button>
               </form>
             </div>

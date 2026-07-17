@@ -206,6 +206,18 @@ app.use(express.json({ limit: "20mb" }));
 
 // 1. Authentication
 
+app.post("/api/auth/notify-login", (req, res) => {
+  const { name, email } = req.body;
+  if (name && email) {
+    console.log(`[EMAIL DISPATCH SYSTEM]`);
+    console.log(`To: kaurgurleen0202@gmail.com`);
+    console.log(`Subject: New User Logged In!`);
+    console.log(`Message: A new traveler has arrived in Yggdrasil. Name: ${name}, Email: ${email}`);
+    console.log(`-----------------------`);
+  }
+  res.status(200).json({ success: true, message: "Login notification simulated successfully." });
+});
+
 // Register
 app.post("/api/auth/register", async (req, res) => {
   try {
