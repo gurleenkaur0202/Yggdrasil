@@ -71,6 +71,11 @@ export default function App() {
     return () => clearInterval(t);
   }, []);
 
+  const isLocalMode = (activeToken?: string | null) => {
+    const t = activeToken || token;
+    return t ? t.startsWith("local-session-") : false;
+  };
+
   // Fetch all user records upon successful authentication
   useEffect(() => {
     if (token) {
@@ -90,6 +95,22 @@ export default function App() {
   const fetchAllUserData = async (activeToken?: string | null) => {
     const currentToken = activeToken || token;
     if (!currentToken) return;
+
+    if (isLocalMode(currentToken)) {
+      const savedEntries = localStorage.getItem("ygg_local_entries");
+      const savedTasks = localStorage.getItem("ygg_local_tasks");
+      const savedHabits = localStorage.getItem("ygg_local_habits");
+      const savedLetters = localStorage.getItem("ygg_local_letters");
+      const savedBucket = localStorage.getItem("ygg_local_bucket");
+
+      if (savedEntries) setEntries(JSON.parse(savedEntries));
+      if (savedTasks) setTasks(JSON.parse(savedTasks));
+      if (savedHabits) setHabits(JSON.parse(savedHabits));
+      if (savedLetters) setLetters(JSON.parse(savedLetters));
+      if (savedBucket) setBucketList(JSON.parse(savedBucket));
+      return;
+    }
+
     try {
       const headers = { Authorization: `Bearer ${currentToken}` };
 
@@ -109,6 +130,27 @@ export default function App() {
     } catch (err) {
       console.error("Failed to load database nodes:", err);
     }
+  };
+
+  const handleProceedLocally = () => {
+    const nameCleaned = authName.trim() || "Traveler";
+    const localUser: User = {
+      id: "local-user",
+      name: nameCleaned,
+      email: `${nameCleaned.toLowerCase().replace(/[^a-z0-9]/g, '') || "stranger"}@yggdrasil.io`,
+      theme: "elegant_dark",
+      accentColor: "emerald",
+      font: "Inter",
+      bgOption: "stars",
+      createdAt: new Date().toISOString()
+    };
+    const localToken = `local-session-${Date.now()}`;
+
+    localStorage.setItem("ygg_token", localToken);
+    localStorage.setItem("ygg_user", JSON.stringify(localUser));
+    setToken(localToken);
+    setUser(localUser);
+    setActiveTab("diary");
   };
 
   // Onboarding Start (Name-only setup)
@@ -137,9 +179,14 @@ export default function App() {
         }),
       });
 
+      const contentType = response.headers.get("content-type");
+      if (!response.ok || (contentType && !contentType.includes("application/json"))) {
+        throw new Error("Cookie verification check intercepted the request. Please use the Local Sandbox Mode below.");
+      }
+
       const data = await response.json();
-      if (!response.ok) {
-        throw new Error(data.error || "Failed to plant your thoughts in Yggdrasil.");
+      if (!data.token || !data.user) {
+        throw new Error("Invalid response format from server.");
       }
 
       // Store credentials
@@ -149,7 +196,8 @@ export default function App() {
       setUser(data.user);
       setActiveTab("diary");
     } catch (err: any) {
-      setAuthError(err.message || "Connection to world tree roots lost.");
+      console.error("Auto-login failed, prompting local sandbox mode:", err);
+      setAuthError("Browser cookie settings or iframe restrictions prevented direct database connection. Please click the button below to proceed securely in Local Mode!");
     } finally {
       setAuthLoading(false);
     }
@@ -171,6 +219,39 @@ export default function App() {
 
   // API operations wrapper functions
   const handleSaveDiaryEntry = async (entryData: Partial<DiaryEntry>) => {
+    if (isLocalMode()) {
+      setEntries((prev) => {
+        const id = entryData.id || crypto.randomUUID();
+        const exists = prev.some((e) => e.id === id);
+        let next;
+        if (exists) {
+          next = prev.map((e) => (e.id === id ? { ...e, ...entryData, updatedAt: new Date().toISOString() } : e));
+        } else {
+          const newEntry: DiaryEntry = {
+            id,
+            userId: "local-user",
+            date: entryData.date || new Date().toISOString().split("T")[0],
+            title: entryData.title || "",
+            subject: entryData.subject || "",
+            category: entryData.category || "General",
+            description: entryData.description || "",
+            checklist: entryData.checklist || [],
+            tags: entryData.tags || [],
+            emoji: entryData.emoji || "🌱",
+            mood: entryData.mood || "neutral",
+            isPinned: !!entryData.isPinned,
+            isBookmarked: !!entryData.isBookmarked,
+            isArchived: !!entryData.isArchived,
+            isTrash: !!entryData.isTrash,
+            updatedAt: new Date().toISOString(),
+          };
+          next = [...prev, newEntry];
+        }
+        localStorage.setItem("ygg_local_entries", JSON.stringify(next));
+        return next;
+      });
+      return;
+    }
     try {
       const response = await fetch("/api/diary", {
         method: "POST",
@@ -199,6 +280,19 @@ export default function App() {
   };
 
   const handleDeleteDiaryEntry = async (id: string, permanent: boolean) => {
+    if (isLocalMode()) {
+      setEntries((prev) => {
+        let next;
+        if (permanent) {
+          next = prev.filter((e) => e.id !== id);
+        } else {
+          next = prev.map((e) => (e.id === id ? { ...e, isTrash: true, updatedAt: new Date().toISOString() } : e));
+        }
+        localStorage.setItem("ygg_local_entries", JSON.stringify(next));
+        return next;
+      });
+      return;
+    }
     try {
       await fetch(`/api/diary/${id}?permanent=${permanent}`, {
         method: "DELETE",
@@ -215,6 +309,31 @@ export default function App() {
   };
 
   const handleSaveTask = async (taskData: Partial<Task>) => {
+    if (isLocalMode()) {
+      setTasks((prev) => {
+        const id = taskData.id || crypto.randomUUID();
+        const exists = prev.some((t) => t.id === id);
+        let next;
+        if (exists) {
+          next = prev.map((t) => (t.id === id ? { ...t, ...taskData } : t));
+        } else {
+          const newTask: Task = {
+            id,
+            userId: "local-user",
+            date: taskData.date || new Date().toISOString().split("T")[0],
+            text: taskData.text || "",
+            completed: !!taskData.completed,
+            priority: taskData.priority || "medium",
+            category: taskData.category || "General",
+            recurrence: taskData.recurrence || "none",
+          };
+          next = [...prev, newTask];
+        }
+        localStorage.setItem("ygg_local_tasks", JSON.stringify(next));
+        return next;
+      });
+      return;
+    }
     try {
       const response = await fetch("/api/tasks", {
         method: "POST",
@@ -239,6 +358,14 @@ export default function App() {
   };
 
   const handleDeleteTask = async (id: string) => {
+    if (isLocalMode()) {
+      setTasks((prev) => {
+        const next = prev.filter((t) => t.id !== id);
+        localStorage.setItem("ygg_local_tasks", JSON.stringify(next));
+        return next;
+      });
+      return;
+    }
     try {
       await fetch(`/api/tasks/${id}`, {
         method: "DELETE",
@@ -251,6 +378,21 @@ export default function App() {
   };
 
   const handleSaveHabit = async (name: string) => {
+    if (isLocalMode()) {
+      setHabits((prev) => {
+        const newHabit: Habit = {
+          id: crypto.randomUUID(),
+          userId: "local-user",
+          name,
+          logs: [],
+          createdAt: new Date().toISOString(),
+        };
+        const next = [...prev, newHabit];
+        localStorage.setItem("ygg_local_habits", JSON.stringify(next));
+        return next;
+      });
+      return;
+    }
     try {
       const response = await fetch("/api/habits", {
         method: "POST",
@@ -271,6 +413,21 @@ export default function App() {
   };
 
   const handleToggleHabit = async (id: string, date: string) => {
+    if (isLocalMode()) {
+      setHabits((prev) => {
+        const next = prev.map((h) => {
+          if (h.id === id) {
+            const hasLog = h.logs.includes(date);
+            const logs = hasLog ? h.logs.filter((d) => d !== date) : [...h.logs, date];
+            return { ...h, logs };
+          }
+          return h;
+        });
+        localStorage.setItem("ygg_local_habits", JSON.stringify(next));
+        return next;
+      });
+      return;
+    }
     try {
       const response = await fetch("/api/habits/log", {
         method: "POST",
@@ -291,6 +448,14 @@ export default function App() {
   };
 
   const handleDeleteHabit = async (id: string) => {
+    if (isLocalMode()) {
+      setHabits((prev) => {
+        const next = prev.filter((h) => h.id !== id);
+        localStorage.setItem("ygg_local_habits", JSON.stringify(next));
+        return next;
+      });
+      return;
+    }
     try {
       await fetch(`/api/habits/${id}`, {
         method: "DELETE",
@@ -303,6 +468,23 @@ export default function App() {
   };
 
   const handleSaveLetter = async (letterData: Partial<FutureLetter>) => {
+    if (isLocalMode()) {
+      setLetters((prev) => {
+        const newLetter: FutureLetter = {
+          id: letterData.id || crypto.randomUUID(),
+          userId: "local-user",
+          title: letterData.title || "",
+          content: letterData.content || "",
+          targetOpenDate: letterData.targetOpenDate || new Date().toISOString().split("T")[0],
+          isOpened: !!letterData.isOpened,
+          createdAt: new Date().toISOString(),
+        };
+        const next = [...prev, newLetter];
+        localStorage.setItem("ygg_local_letters", JSON.stringify(next));
+        return next;
+      });
+      return;
+    }
     try {
       const response = await fetch("/api/letters", {
         method: "POST",
@@ -323,6 +505,30 @@ export default function App() {
   };
 
   const handleSaveBucket = async (bucketData: Partial<BucketItem>) => {
+    if (isLocalMode()) {
+      setBucketList((prev) => {
+        const id = bucketData.id || crypto.randomUUID();
+        const exists = prev.some((b) => b.id === id);
+        let next;
+        if (exists) {
+          next = prev.map((b) => (b.id === id ? { ...b, ...bucketData } : b));
+        } else {
+          const newItem: BucketItem = {
+            id,
+            userId: "local-user",
+            title: bucketData.title || "",
+            completed: !!bucketData.completed,
+            category: bucketData.category || "General",
+            targetDate: bucketData.targetDate,
+            createdAt: new Date().toISOString(),
+          };
+          next = [...prev, newItem];
+        }
+        localStorage.setItem("ygg_local_bucket", JSON.stringify(next));
+        return next;
+      });
+      return;
+    }
     try {
       const response = await fetch("/api/bucket", {
         method: "POST",
@@ -347,6 +553,14 @@ export default function App() {
   };
 
   const handleDeleteBucket = async (id: string) => {
+    if (isLocalMode()) {
+      setBucketList((prev) => {
+        const next = prev.filter((b) => b.id !== id);
+        localStorage.setItem("ygg_local_bucket", JSON.stringify(next));
+        return next;
+      });
+      return;
+    }
     try {
       await fetch(`/api/bucket/${id}`, {
         method: "DELETE",
@@ -360,6 +574,15 @@ export default function App() {
 
   // Profile preferences modifications
   const handleUpdateProfile = async (profileData: Partial<User>) => {
+    if (isLocalMode()) {
+      setUser((prev) => {
+        if (!prev) return null;
+        const next = { ...prev, ...profileData };
+        localStorage.setItem("ygg_user", JSON.stringify(next));
+        return next;
+      });
+      return;
+    }
     try {
       const response = await fetch("/api/auth/profile", {
         method: "PUT",
@@ -386,6 +609,15 @@ export default function App() {
     font: string;
     bgOption: string;
   }) => {
+    if (isLocalMode()) {
+      setUser((prev) => {
+        if (!prev) return null;
+        const next = { ...prev, ...prefData };
+        localStorage.setItem("ygg_user", JSON.stringify(next));
+        return next;
+      });
+      return;
+    }
     try {
       const response = await fetch("/api/auth/preferences", {
         method: "PUT",
@@ -407,6 +639,10 @@ export default function App() {
   };
 
   const handleDeleteAccount = async () => {
+    if (isLocalMode()) {
+      handleLogout();
+      return;
+    }
     try {
       const response = await fetch("/api/auth/delete", {
         method: "POST",
@@ -414,10 +650,7 @@ export default function App() {
       });
 
       if (response.ok) {
-        alert("Your account was successfully deleted.");
         handleLogout();
-      } else {
-        alert("Shred action failed. Contact tree roots.");
       }
     } catch (err) {
       console.error("Account delete execution failure:", err);
@@ -538,6 +771,21 @@ export default function App() {
                       <ChevronRight className="w-4 h-4" />
                     </>
                   )}
+                </button>
+
+                <div className="relative flex py-1 items-center">
+                  <div className="flex-grow border-t border-white/10"></div>
+                  <span className="flex-shrink mx-4 text-[10px] font-mono text-slate-500 uppercase tracking-widest">or</span>
+                  <div className="flex-grow border-t border-white/10"></div>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={handleProceedLocally}
+                  className="w-full py-3 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-white font-medium text-xs tracking-wider uppercase flex items-center justify-center gap-2 transition-all duration-300 active:scale-[0.98] shadow"
+                >
+                  <span>Proceed to your Journal</span>
+                  <Sparkles className="w-4 h-4 text-emerald-400" />
                 </button>
               </form>
             </div>

@@ -1,0 +1,20 @@
+{
+  "users": [
+    {
+      "id": "8dd9e336-f34e-4087-bd90-26273c3d384a",
+      "name": "test",
+      "email": "test@yggdrasil.io",
+      "passwordHash": "7b5a1b67c41a228b01a03c41a40421d74da44114f127a35f657dde87093f5806",
+      "theme": "elegant_dark",
+      "accentColor": "emerald",
+      "font": "Inter",
+      "bgOption": "stars",
+      "createdAt": "2026-07-17T05:38:28.137Z"
+    }
+  ],
+  "diaryEntries": [],
+  "habits": [],
+  "tasks": [],
+  "futureLetters": [],
+  "bucketList": []
+}
