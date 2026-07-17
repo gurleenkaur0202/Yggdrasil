@@ -71,35 +71,6 @@ export default function App() {
     return () => clearInterval(t);
   }, []);
 
-  // Auto-login immediately if no token is present to bypass login screen and direct user straight to the diary app
-  useEffect(() => {
-    const performSilentAutoLogin = async () => {
-      if (!token) {
-        try {
-          const response = await fetch("/api/auth/auto-login", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              email: "kaurgurleen0202@gmail.com",
-              name: "gurleen",
-            }),
-          });
-          if (response.ok) {
-            const data = await response.json();
-            localStorage.setItem("ygg_token", data.token);
-            localStorage.setItem("ygg_user", JSON.stringify(data.user));
-            setToken(data.token);
-            setUser(data.user);
-            setActiveTab("diary");
-          }
-        } catch (err) {
-          console.error("Auto-login error:", err);
-        }
-      }
-    };
-    performSilentAutoLogin();
-  }, [token]);
-
   // Fetch all user records upon successful authentication
   useEffect(() => {
     if (token) {
@@ -140,27 +111,35 @@ export default function App() {
     }
   };
 
-  // Auth Submit
-  const handleAuthSubmit = async (e: React.FormEvent) => {
+  // Onboarding Start (Name-only setup)
+  const handleStartGrowingThoughts = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!authName.trim()) {
+      setAuthError("Please tell Yggdrasil your name to begin.");
+      return;
+    }
     setAuthError("");
     setAuthLoading(true);
 
-    const endpoint = authMode === "login" ? "/api/auth/login" : "/api/auth/register";
-    const body = authMode === "login"
-      ? { email: authEmail, password: authPassword }
-      : { email: authEmail, password: authPassword, name: authName };
-
     try {
-      const response = await fetch(endpoint, {
+      const nameCleaned = authName.trim();
+      const sanitized = nameCleaned.toLowerCase().replace(/[^a-z0-9]/g, '');
+      const isGurleen = sanitized.includes("gurleen");
+      // Use the user's specific cloud email to preserve database sessions, otherwise generate a unique email per user name
+      const email = isGurleen ? "kaurgurleen0202@gmail.com" : `${sanitized || "stranger"}@yggdrasil.io`;
+
+      const response = await fetch("/api/auth/auto-login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(body),
+        body: JSON.stringify({
+          email: email,
+          name: nameCleaned,
+        }),
       });
 
       const data = await response.json();
       if (!response.ok) {
-        throw new Error(data.error || "Authentication failed.");
+        throw new Error(data.error || "Failed to plant your thoughts in Yggdrasil.");
       }
 
       // Store credentials
@@ -170,7 +149,7 @@ export default function App() {
       setUser(data.user);
       setActiveTab("diary");
     } catch (err: any) {
-      setAuthError(err.message || "Server connectivity lost.");
+      setAuthError(err.message || "Connection to world tree roots lost.");
     } finally {
       setAuthLoading(false);
     }
@@ -503,7 +482,7 @@ export default function App() {
 
       <AnimatePresence mode="wait">
         {!token ? (
-          /* Authentication Screen with premium glassmorphism */
+          /* Onboarding Setup Screen (Simplified Name-Only Entrance) */
           <motion.div
             key="auth"
             initial={{ opacity: 0, scale: 0.98 }}
@@ -526,38 +505,6 @@ export default function App() {
                 </p>
               </div>
 
-              {/* Navigation Tab Selector for Auth Modes */}
-              <div className="flex bg-black/40 p-1 rounded-xl border border-white/5">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setAuthMode("login");
-                    setAuthError("");
-                  }}
-                  className={`flex-1 py-2 text-center rounded-lg text-xs font-mono tracking-wider transition-all duration-200 ${
-                    authMode === "login"
-                      ? "bg-[var(--primary-color)] text-black font-semibold shadow"
-                      : "text-zinc-400 hover:text-white"
-                  }`}
-                >
-                  LOGIN CHAMBER
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setAuthMode("register");
-                    setAuthError("");
-                  }}
-                  className={`flex-1 py-2 text-center rounded-lg text-xs font-mono tracking-wider transition-all duration-200 ${
-                    authMode === "register"
-                      ? "bg-[var(--primary-color)] text-black font-semibold shadow"
-                      : "text-zinc-400 hover:text-white"
-                  }`}
-                >
-                  REGISTER ROOT
-                </button>
-              </div>
-
               {authError && (
                 <div className="p-3.5 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-400 text-xs text-center font-mono flex items-center gap-2 justify-center">
                   <Shield className="w-4 h-4 shrink-0" />
@@ -565,75 +512,34 @@ export default function App() {
                 </div>
               )}
 
-              <form onSubmit={handleAuthSubmit} className="space-y-4">
-                {authMode === "register" && (
-                  <div className="space-y-1.5">
-                    <label className="text-xs font-mono opacity-50 block">Full Name</label>
-                    <input
-                      type="text"
-                      required
-                      value={authName}
-                      onChange={(e) => setAuthName(e.target.value)}
-                      placeholder="Enter your name"
-                      className="w-full bg-black/30 border border-white/10 rounded-xl px-4 py-2.5 text-sm outline-none focus:border-[var(--primary-color)] text-white"
-                    />
-                  </div>
-                )}
-
-                <div className="space-y-1.5">
-                  <label className="text-xs font-mono opacity-50 block">Email Address</label>
+              <form onSubmit={handleStartGrowingThoughts} className="space-y-5">
+                <div className="space-y-2">
+                  <label className="text-[10px] font-mono tracking-widest text-slate-400 uppercase block text-center">Your Name</label>
                   <input
-                    type="email"
+                    type="text"
                     required
-                    value={authEmail}
-                    onChange={(e) => setAuthEmail(e.target.value)}
-                    placeholder="name@university.edu"
-                    className="w-full bg-black/30 border border-white/10 rounded-xl px-4 py-2.5 text-sm outline-none focus:border-[var(--primary-color)] text-white font-mono"
+                    value={authName}
+                    onChange={(e) => setAuthName(e.target.value)}
+                    placeholder="Enter your name to begin..."
+                    className="w-full bg-black/30 border border-white/10 rounded-xl px-4 py-3 text-sm outline-none focus:border-[var(--primary-color)] text-white text-center tracking-wide"
                   />
-                </div>
-
-                <div className="space-y-1.5">
-                  <label className="text-xs font-mono opacity-50 block">Access Key Code (Password)</label>
-                  <div className="relative">
-                    <input
-                      type="password"
-                      required
-                      value={authPassword}
-                      onChange={(e) => setAuthPassword(e.target.value)}
-                      placeholder="••••••••"
-                      className="w-full bg-black/30 border border-white/10 rounded-xl px-4 py-2.5 text-sm outline-none focus:border-[var(--primary-color)] text-white font-mono"
-                    />
-                    <Lock className="w-4 h-4 opacity-40 absolute right-3.5 top-3.5" />
-                  </div>
                 </div>
 
                 <button
                   type="submit"
                   disabled={authLoading}
-                  className="w-full py-3 rounded-xl bg-[var(--primary-color)] hover:bg-[var(--primary-color)]/95 text-black font-semibold text-sm tracking-wider flex items-center justify-center gap-2 transition-colors disabled:opacity-50"
+                  className="w-full py-3.5 rounded-xl bg-[var(--primary-color)] hover:bg-[var(--primary-color)]/95 text-black font-semibold text-xs tracking-widest uppercase flex items-center justify-center gap-2 transition-all duration-300 hover:scale-[1.02] active:scale-[0.98] shadow-lg disabled:opacity-50"
                 >
                   {authLoading ? (
                     <span className="w-4 h-4 border-2 border-black border-t-transparent rounded-full animate-spin" />
-                  ) : authMode === "login" ? (
-                    "ENTER DIARY CHAMBERS"
                   ) : (
-                    "PLANT NEW ROOT"
+                    <>
+                      <span>Start growing your thoughts</span>
+                      <ChevronRight className="w-4 h-4" />
+                    </>
                   )}
                 </button>
               </form>
-
-              <div className="text-center pt-2 border-t border-white/5">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setAuthMode(authMode === "login" ? "register" : "login");
-                    setAuthError("");
-                  }}
-                  className="text-xs font-mono text-[var(--primary-color)] hover:underline"
-                >
-                  {authMode === "login" ? "Create a new private diary root →" : "Already registered? Login chamber →"}
-                </button>
-              </div>
             </div>
           </motion.div>
         ) : (
