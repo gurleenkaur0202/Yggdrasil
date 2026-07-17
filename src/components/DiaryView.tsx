@@ -67,10 +67,30 @@ export const DiaryView: React.FC<DiaryViewProps> = ({
   const [newSubjectText, setNewSubjectText] = useState("");
   const [subjectsList, setSubjectsList] = useState<string[]>(["Personal", "College", "Fitness", "Ideas", "Recipes", "Work"]);
   const [isAiOpen, setIsAiOpen] = useState(false);
-  const [aiAction, setAiAction] = useState<"summarize" | "grammar" | "rewrite" | "studynotes" | "todo" | "prompt" | "motivate">("summarize");
+  const [aiAction, setAiAction] = useState<"ask">("ask");
+  const [aiQuestion, setAiQuestion] = useState("");
   const [aiLoading, setAiLoading] = useState(false);
   const [aiResult, setAiResult] = useState("");
   const [saveStatus, setSaveStatus] = useState<"saved" | "saving" | "unsaved">("saved");
+  
+  const savedSelection = useRef<Range | null>(null);
+
+  const saveSelection = () => {
+    const sel = window.getSelection();
+    if (sel && sel.rangeCount > 0) {
+      savedSelection.current = sel.getRangeAt(0);
+    }
+  };
+
+  const restoreSelection = () => {
+    if (savedSelection.current) {
+      const sel = window.getSelection();
+      if (sel) {
+        sel.removeAllRanges();
+        sel.addRange(savedSelection.current);
+      }
+    }
+  };
 
   const [activeEntryId, setActiveEntryId] = useState<string | null>(null);
 
@@ -82,12 +102,16 @@ export const DiaryView: React.FC<DiaryViewProps> = ({
   // Load entry when currentDate changes
   useEffect(() => {
     const entry = entries.find((e) => e.date === currentDate && !e.isTrash);
+    const editor = document.getElementById("diary-editor");
     if (entry) {
       setActiveEntryId(entry.id);
       setTitle(entry.title);
       setSubject(entry.subject);
       setCategory(entry.category);
       setDescription(entry.description);
+      if (editor && editor.innerHTML !== entry.description) {
+        editor.innerHTML = entry.description;
+      }
       setChecklist(entry.checklist || []);
       setTags(entry.tags || []);
       setEmoji(entry.emoji || "📝");
@@ -106,6 +130,7 @@ export const DiaryView: React.FC<DiaryViewProps> = ({
       setSubject("Personal");
       setCategory("Diary");
       setDescription("");
+      if (editor) editor.innerHTML = "";
       setChecklist([]);
       setTags([]);
       setEmoji("📝");
@@ -128,19 +153,6 @@ export const DiaryView: React.FC<DiaryViewProps> = ({
     setSubjectsList(merged);
   }, [entries]);
 
-  // Handle auto-saving (saves automatically after typing stops for 2.5 seconds)
-  const triggerAutoSave = () => {
-    setSaveStatus("unsaved");
-    if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
-
-    saveTimeoutRef.current = setTimeout(() => {
-      setSaveStatus("saving");
-      handleSave().then(() => {
-        setSaveStatus("saved");
-      });
-    }, 2500);
-  };
-
   const handleSave = async () => {
     const entryData: Partial<DiaryEntry> = {
       id: activeEntryId || undefined,
@@ -161,6 +173,24 @@ export const DiaryView: React.FC<DiaryViewProps> = ({
       isBookmarked,
     };
     await onSaveEntry(entryData);
+  };
+
+  const handleSaveRef = useRef(handleSave);
+  useEffect(() => {
+    handleSaveRef.current = handleSave;
+  });
+
+  // Handle auto-saving (saves automatically after typing stops for 2.5 seconds)
+  const triggerAutoSave = () => {
+    setSaveStatus("unsaved");
+    if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
+
+    saveTimeoutRef.current = setTimeout(() => {
+      setSaveStatus("saving");
+      handleSaveRef.current().then(() => {
+        setSaveStatus("saved");
+      });
+    }, 1500);
   };
 
   // Immediate save on clicking save or blurring
@@ -229,24 +259,15 @@ export const DiaryView: React.FC<DiaryViewProps> = ({
     triggerAutoSave();
   };
 
-  // Markdown Tag Inserter Helper
-  const insertMarkdown = (prefix: string, suffix: string = "") => {
-    const textarea = document.getElementById("diary-editor") as HTMLTextAreaElement;
-    if (!textarea) return;
-
-    const start = textarea.selectionStart;
-    const end = textarea.selectionEnd;
-    const text = textarea.value;
-    const selected = text.substring(start, end);
-    const replacement = prefix + selected + suffix;
-
-    setDescription(text.substring(0, start) + replacement + text.substring(end));
-    triggerAutoSave();
-
-    setTimeout(() => {
-      textarea.focus();
-      textarea.setSelectionRange(start + prefix.length, start + prefix.length + selected.length);
-    }, 50);
+  // Text Formatting Helper
+  const formatText = (command: string, value?: string) => {
+    restoreSelection();
+    document.execCommand(command, false, value);
+    const editor = document.getElementById("diary-editor");
+    if (editor) {
+      setDescription(editor.innerHTML);
+      triggerAutoSave();
+    }
   };
 
   // AI Assistant Call
@@ -262,7 +283,7 @@ export const DiaryView: React.FC<DiaryViewProps> = ({
         },
         body: JSON.stringify({
           action: aiAction,
-          text: description || title || "Empty note content.",
+          text: aiAction === "ask" ? aiQuestion : (description || title || "Empty note content."),
           date: currentDate,
         }),
       });
@@ -337,17 +358,6 @@ export const DiaryView: React.FC<DiaryViewProps> = ({
             {/* Save indicator & action headers */}
             <div className="flex items-center justify-between pb-3 border-b border-white/5">
               <div className="flex items-center gap-3">
-                <span className="text-2xl">{emoji}</span>
-                <input
-                  type="text"
-                  value={emoji}
-                  onChange={(e) => {
-                    setEmoji(e.target.value.substring(0, 4));
-                    triggerAutoSave();
-                  }}
-                  className="w-10 bg-black/20 text-center rounded-lg py-1 border border-white/5 outline-none font-sans"
-                  title="Emoji representation"
-                />
                 <span className="text-xs font-mono uppercase tracking-wider bg-white/5 px-2.5 py-1 rounded-full text-slate-300">
                   {category}
                 </span>
@@ -391,138 +401,36 @@ export const DiaryView: React.FC<DiaryViewProps> = ({
               className="w-full bg-transparent border-none text-2xl font-display font-semibold outline-none tracking-tight placeholder-white/20 text-slate-100"
             />
 
-            {/* Markdown toolbar helpers */}
-            <div className="flex flex-wrap gap-1 p-1 bg-black/20 border border-white/5 rounded-xl text-xs font-mono">
-              <button
-                type="button"
-                onClick={() => insertMarkdown("**", "**")}
-                className="px-2 py-1 rounded hover:bg-white/5 font-bold"
-              >
-                B
-              </button>
-              <button
-                type="button"
-                onClick={() => insertMarkdown("*", "*")}
-                className="px-2 py-1 rounded hover:bg-white/5 italic"
-              >
-                I
-              </button>
-              <button
-                type="button"
-                onClick={() => insertMarkdown("## ")}
-                className="px-2 py-1 rounded hover:bg-white/5"
-              >
-                H2
-              </button>
-              <button
-                type="button"
-                onClick={() => insertMarkdown("\n> ")}
-                className="px-2 py-1 rounded hover:bg-white/5 font-serif"
-              >
-                “ Quote
-              </button>
-              <button
-                type="button"
-                onClick={() => insertMarkdown("\n```\n", "\n```")}
-                className="px-2 py-1 rounded hover:bg-white/5"
-              >
-                Code
-              </button>
-              <button
-                type="button"
-                onClick={() => insertMarkdown("\n- ")}
-                className="px-2 py-1 rounded hover:bg-white/5"
-              >
-                • List
-              </button>
-              <div className="h-4 w-px bg-white/10 mx-1 align-middle my-auto" />
+            {/* Rich Text toolbar */}
+            <div className="flex flex-wrap items-center gap-1.5 p-1.5 bg-black/20 border border-white/5 rounded-xl text-xs font-mono">
               <button
                 type="button"
                 onClick={() => setIsAiOpen(true)}
-                className="px-2.5 py-1 rounded bg-[var(--primary-color)]/25 hover:bg-[var(--primary-color)]/45 text-[var(--primary-color)] font-medium flex items-center gap-1 tracking-wide"
+                className="px-3 py-1.5 rounded-lg bg-[var(--primary-color)]/20 hover:bg-[var(--primary-color)]/40 text-[var(--primary-color)] font-medium flex items-center gap-1 tracking-wide border border-[var(--primary-color)]/30"
               >
-                <Sparkles className="w-3 h-3 animate-pulse" /> Ask Yggdrasil AI
+                <Sparkles className="w-3.5 h-3.5 animate-pulse" /> Ask Yggdrasil AI
               </button>
             </div>
 
-            {/* Textarea description */}
-            <textarea
+            {/* Rich text description */}
+            <div
               id="diary-editor"
-              value={description}
-              onChange={(e) => {
-                setDescription(e.target.value);
+              contentEditable
+              suppressContentEditableWarning
+              onBlur={saveSelection}
+              onKeyUp={saveSelection}
+              onMouseUp={saveSelection}
+              onInput={(e) => {
+                setDescription(e.currentTarget.innerHTML);
                 triggerAutoSave();
               }}
-              placeholder="Pour your mind out. Document memories, list concepts studied, draw connections, set intentions..."
-              className="w-full min-h-[350px] md:min-h-[420px] bg-transparent border-none outline-none resize-none text-base leading-relaxed font-serif placeholder-white/20 text-slate-200"
+              className="w-full min-h-[350px] md:min-h-[420px] bg-transparent border-none outline-none resize-none text-base leading-relaxed font-serif text-slate-200 p-2"
+              style={{ minHeight: '350px', outline: 'none' }}
+              data-placeholder="Pour your mind out. Document memories, list concepts studied..."
             />
           </div>
 
-          {/* Interactive Checklists Section */}
-          <div className="p-6 rounded-2xl glass-panel space-y-4">
-            <h3 className="text-sm font-semibold tracking-wide flex items-center justify-between">
-              <span className="flex items-center gap-2">
-                <CheckSquare className="w-4 h-4 text-[var(--primary-color)]" /> Checklists & Milestones
-              </span>
-              {checklist.length > 0 && (
-                <span className="text-xs font-mono opacity-50">{checklistPercent}% Complete</span>
-              )}
-            </h3>
 
-            {checklist.length > 0 && (
-              <div className="w-full h-1.5 bg-white/5 rounded-full overflow-hidden">
-                <div
-                  className="h-full bg-emerald-400 transition-all duration-500"
-                  style={{ width: `${checklistPercent}%` }}
-                />
-              </div>
-            )}
-
-            {checklist.length === 0 ? (
-              <p className="text-xs opacity-40 font-serif italic">No checkboxes created for this date.</p>
-            ) : (
-              <div className="space-y-2">
-                {checklist.map((item, idx) => (
-                  <div key={idx} className="flex items-center justify-between gap-3 p-2.5 rounded-xl bg-black/20 border border-white/5 group">
-                    <div className="flex items-center gap-3">
-                      <input
-                        type="checkbox"
-                        checked={item.completed}
-                        onChange={() => handleToggleChecklist(idx)}
-                        className="w-4.5 h-4.5 rounded bg-black/30 border-white/10 text-emerald-400 focus:ring-0 cursor-pointer"
-                      />
-                      <span className={`text-sm ${item.completed ? "line-through opacity-40" : "opacity-85"}`}>
-                        {item.text}
-                      </span>
-                    </div>
-                    <button
-                      onClick={() => handleRemoveChecklistItem(idx)}
-                      className="text-white/35 hover:text-rose-400 opacity-0 group-hover:opacity-100 transition-all"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
-                  </div>
-                ))}
-              </div>
-            )}
-
-            <div className="flex gap-2">
-              <input
-                type="text"
-                value={newChecklistItem}
-                onChange={(e) => setNewChecklistItem(e.target.value)}
-                onKeyDown={(e) => e.key === "Enter" && handleAddChecklistItem()}
-                placeholder="Create a new check-item..."
-                className="flex-1 bg-black/30 border border-white/10 rounded-xl px-4 py-2 text-sm outline-none focus:border-[var(--primary-color)]"
-              />
-              <button
-                onClick={handleAddChecklistItem}
-                className="px-4 py-2 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-sm"
-              >
-                Add
-              </button>
-            </div>
-          </div>
         </div>
 
         {/* Sidebar Controls Panel (Right column) */}
@@ -591,71 +499,7 @@ export const DiaryView: React.FC<DiaryViewProps> = ({
               </div>
             </div>
 
-            {/* Bookmark & Pins widget */}
-            <div className="pt-2 border-t border-white/5 space-y-3">
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-mono opacity-50">Pin Calendar Event</span>
-                <input
-                  type="checkbox"
-                  checked={isPinned}
-                  onChange={(e) => {
-                    setIsPinned(e.target.checked);
-                    triggerAutoSave();
-                  }}
-                  className="w-4 h-4 rounded text-[var(--primary-color)] focus:ring-0 outline-none"
-                />
-              </div>
 
-              {isPinned && (
-                <div className="space-y-2 p-3 rounded-xl bg-black/20 border border-white/5">
-                  <div className="flex items-center justify-between">
-                    <span className="text-[10px] font-mono opacity-50">Star Highlight Icon</span>
-                    <input
-                      type="checkbox"
-                      checked={pinStar}
-                      onChange={(e) => {
-                        setPinStar(e.target.checked);
-                        triggerAutoSave();
-                      }}
-                      className="w-3.5 h-3.5 rounded text-amber-400 focus:ring-0 outline-none"
-                    />
-                  </div>
-                  <div className="space-y-1">
-                    <span className="text-[10px] font-mono opacity-50">Color Label</span>
-                    <div className="flex gap-1.5">
-                      {PIN_COLORS.map((col) => (
-                        <button
-                          key={col}
-                          onClick={() => {
-                            setPinColor(col);
-                            triggerAutoSave();
-                          }}
-                          className={`w-4 h-4 rounded-full border border-white/10 ${
-                            col === "blue" ? "bg-blue-400" :
-                            col === "red" ? "bg-rose-400" :
-                            col === "yellow" ? "bg-amber-400" :
-                            col === "green" ? "bg-emerald-400" : "bg-pink-400"
-                          } ${pinColor === col ? "ring-2 ring-white scale-125" : ""}`}
-                        />
-                      ))}
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-mono opacity-50">Add to Bookmarks</span>
-                <input
-                  type="checkbox"
-                  checked={isBookmarked}
-                  onChange={(e) => {
-                    setIsBookmarked(e.target.checked);
-                    triggerAutoSave();
-                  }}
-                  className="w-4 h-4 rounded text-[var(--primary-color)] focus:ring-0 outline-none"
-                />
-              </div>
-            </div>
           </div>
 
           {/* Environmental parameters Mood, Weather, Location */}
@@ -731,38 +575,7 @@ export const DiaryView: React.FC<DiaryViewProps> = ({
             </div>
           </div>
 
-          {/* Tags managers */}
-          <div className="p-6 rounded-2xl glass-panel space-y-4">
-            <h3 className="text-xs uppercase tracking-wider font-mono opacity-60 flex items-center gap-2">
-              <Tag className="w-3.5 h-3.5" /> Tag References
-            </h3>
 
-            <div className="flex flex-wrap gap-1.5">
-              {tags.map((tag) => (
-                <span
-                  key={tag}
-                  className="px-2.5 py-1 rounded-full bg-white/5 border border-white/5 text-[10px] font-mono text-slate-300 flex items-center gap-1 group"
-                >
-                  #{tag}
-                  <button
-                    onClick={() => handleRemoveTag(tag)}
-                    className="text-white/30 hover:text-white/80 transition-colors cursor-pointer"
-                  >
-                    ×
-                  </button>
-                </span>
-              ))}
-            </div>
-
-            <input
-              type="text"
-              value={newTagText}
-              onChange={(e) => setNewTagText(e.target.value)}
-              onKeyDown={handleAddTag}
-              placeholder="Press Enter to add tags..."
-              className="w-full bg-black/30 border border-white/10 rounded-xl px-3 py-1.5 text-xs outline-none focus:border-[var(--primary-color)] text-slate-200"
-            />
-          </div>
         </div>
       </div>
 
@@ -796,30 +609,17 @@ export const DiaryView: React.FC<DiaryViewProps> = ({
                   </button>
                 </div>
 
-                <div className="space-y-3">
-                  <label className="text-xs font-mono opacity-50">Select Counsel Directive</label>
-                  <div className="grid grid-cols-2 gap-2">
-                    {[
-                      { key: "summarize", label: "Summarize Entry" },
-                      { key: "grammar", label: "Proofread Prose" },
-                      { key: "rewrite", label: "Poetic Rewrite" },
-                      { key: "studynotes", label: "Generate Study Notes" },
-                      { key: "todo", label: "Extract Checklist" },
-                    ].map((opt) => (
-                      <button
-                        key={opt.key}
-                        onClick={() => setAiAction(opt.key as any)}
-                        className={`p-2.5 rounded-xl text-xs font-mono text-left border ${
-                          aiAction === opt.key
-                            ? "bg-[var(--primary-color)]/10 border-[var(--primary-color)] text-[var(--primary-color)]"
-                            : "bg-black/30 border-white/5 opacity-60 hover:opacity-100"
-                        }`}
-                      >
-                        {opt.label}
-                      </button>
-                    ))}
+                {aiAction === "ask" && (
+                  <div className="space-y-2 mt-4">
+                    <label className="text-xs font-mono opacity-50">Your Question</label>
+                    <textarea
+                      value={aiQuestion}
+                      onChange={(e) => setAiQuestion(e.target.value)}
+                      placeholder="Ask Yggdrasil anything..."
+                      className="w-full bg-black/30 border border-white/5 rounded-xl p-3 text-sm outline-none focus:border-[var(--primary-color)] font-mono resize-none h-24"
+                    />
                   </div>
-                </div>
+                )}
 
                 <button
                   onClick={handleAiAssist}

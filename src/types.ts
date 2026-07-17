@@ -79,7 +79,6 @@ export interface BucketItem {
 }
 
 export type ThemeType =
-  | "light"
   | "dark"
   | "forest"
   | "ocean"
@@ -87,7 +86,6 @@ export type ThemeType =
   | "sunset"
   | "galaxy"
   | "cyberpunk"
-  | "pastel"
   | "midnight"
   | "lavender"
   | "coffee"
@@ -116,17 +114,6 @@ export const THEMES: Record<ThemeType, ThemeConfig> = {
     cardBg: "bg-white/[0.03] backdrop-blur-sm border border-white/5",
     borderColor: "border-white/5",
     glowColor: "rgba(52, 211, 153, 0.15)",
-  },
-  light: {
-    id: "light",
-    name: "Light Alabaster",
-    background: "bg-slate-50 text-slate-900",
-    text: "text-slate-900",
-    primary: "#0f172a",
-    accent: "#3b82f6",
-    cardBg: "bg-white/80 backdrop-blur-md",
-    borderColor: "border-slate-200/50",
-    glowColor: "rgba(59, 130, 246, 0.15)",
   },
   dark: {
     id: "dark",
@@ -204,17 +191,6 @@ export const THEMES: Record<ThemeType, ThemeConfig> = {
     cardBg: "bg-zinc-950/80 border-2 border-[#ff007f]/40 backdrop-blur-md",
     borderColor: "border-[#00f0ff]/30",
     glowColor: "rgba(0, 240, 255, 0.4)",
-  },
-  pastel: {
-    id: "pastel",
-    name: "Cotton Candy",
-    background: "bg-pink-50 text-indigo-900",
-    text: "text-indigo-900",
-    primary: "#f472b6",
-    accent: "#818cf8",
-    cardBg: "bg-white/90 backdrop-blur-md",
-    borderColor: "border-pink-200/50",
-    glowColor: "rgba(244, 114, 182, 0.15)",
   },
   midnight: {
     id: "midnight",

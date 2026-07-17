@@ -129,12 +129,7 @@ export const StatsView: React.FC<StatsViewProps> = ({
   return (
     <div className="space-y-6 pb-12">
       {/* High-level performance banner */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div className="p-5 rounded-2xl glass-panel text-center relative overflow-hidden flex flex-col justify-between h-36">
-          <span className="text-xs font-mono uppercase opacity-55 text-teal-400 block">Weekly Reflection Logs</span>
-          <span className="text-4xl font-bold font-mono tracking-tight text-teal-400">{weeklyStats.journalCount} Pages</span>
-          <p className="text-[10px] opacity-40 font-serif italic">Entries written over the past 7 days</p>
-        </div>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div className="p-5 rounded-2xl glass-panel text-center relative overflow-hidden flex flex-col justify-between h-36">
           <span className="text-xs font-mono uppercase opacity-55 text-purple-400 block">Habits Accomplished</span>
           <span className="text-4xl font-bold font-mono tracking-tight text-purple-400">{weeklyStats.habitToggles} times</span>
@@ -149,9 +144,9 @@ export const StatsView: React.FC<StatsViewProps> = ({
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Habit list and management (Left 2 columns) */}
-        <div className="lg:col-span-2 space-y-6">
+      <div className="grid grid-cols-1 gap-6">
+        {/* Habit list and management */}
+        <div className="space-y-6">
           {/* Habit Tracker Board */}
           <div className="p-6 rounded-2xl glass-panel space-y-4">
             <h3 className="text-sm font-semibold tracking-wide flex items-center justify-between">
@@ -241,48 +236,6 @@ export const StatsView: React.FC<StatsViewProps> = ({
           </div>
         </div>
 
-        {/* Mood Analysis Column (Right column) */}
-        <div className="space-y-6">
-          <div className="p-6 rounded-2xl glass-panel space-y-4">
-            <h3 className="text-sm font-semibold tracking-wide flex items-center gap-2">
-              <Smile className="w-4 h-4 text-amber-400 fill-amber-400/20" /> Emotional Mood Landscape
-            </h3>
-
-            <div className="space-y-3 pt-2">
-              {MOODS.map((md) => {
-                const count = moodFreqs[md] || 0;
-                const pct = Math.round((count / maxMoodCount) * 100);
-
-                return (
-                  <div key={md} className="space-y-1">
-                    <div className="flex justify-between items-center text-xs font-mono">
-                      <span className="flex items-center gap-1.5">
-                        <span className="text-sm">{MOOD_EMOJIS[md]}</span>
-                        <span className="opacity-75">{md}</span>
-                      </span>
-                      <span className="opacity-50">{count} times</span>
-                    </div>
-
-                    <div className="w-full h-2 bg-white/5 rounded-full overflow-hidden">
-                      <div
-                        className={`h-full transition-all duration-500 ${
-                          md === "Happy" ? "bg-amber-400" :
-                          md === "Good" ? "bg-emerald-400" :
-                          md === "Normal" ? "bg-blue-400" :
-                          md === "Sad" ? "bg-indigo-400" :
-                          md === "Angry" ? "bg-rose-500" :
-                          md === "Tired" ? "bg-purple-400" :
-                          md === "Excited" ? "bg-pink-400" : "bg-orange-400"
-                        }`}
-                        style={{ width: `${pct}%` }}
-                      />
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        </div>
       </div>
     </div>
   );

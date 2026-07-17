@@ -147,35 +147,10 @@ export const CalendarView: React.FC<CalendarViewProps> = ({ entries, onSelectDat
             <ChevronRight className="w-4 h-4" />
           </button>
 
-          {/* Subject Filter */}
-          <div className="flex items-center gap-1 bg-black/20 border border-white/5 rounded-xl px-2 py-1 text-xs">
-            <Filter className="w-3.5 h-3.5 opacity-50" />
-            <select
-              value={subjectFilter}
-              onChange={(e) => setSubjectFilter(e.target.value)}
-              className="bg-transparent outline-none pr-2 font-mono text-xs opacity-80 cursor-pointer"
-            >
-              {subjects.map((sub) => (
-                <option key={sub} value={sub} className="bg-slate-900 text-slate-100">
-                  {sub}
-                </option>
-              ))}
-            </select>
-          </div>
+          {/* Subject Filter removed */}
         </div>
 
-        {/* Date jumper */}
-        <form onSubmit={handleSearchSubmit} className="flex items-center bg-black/30 border border-white/10 rounded-xl px-3 py-1.5 w-full md:w-auto">
-          <input
-            type="date"
-            value={searchDate}
-            onChange={(e) => setSearchDate(e.target.value)}
-            className="bg-transparent outline-none text-xs text-white font-mono w-full md:w-36 cursor-pointer"
-          />
-          <button type="submit" className="text-white/60 hover:text-white ml-2">
-            <Search className="w-4 h-4" />
-          </button>
-        </form>
+        {/* Date jumper removed */}
       </div>
 
       {/* Weekdays indicator bar */}
@@ -237,7 +212,6 @@ export const CalendarView: React.FC<CalendarViewProps> = ({ entries, onSelectDat
               {entry ? (
                 <div className="flex flex-col gap-1 my-1.5">
                   <div className="flex items-center gap-1.5">
-                    <span className="text-lg" title={`Emoji: ${entry.emoji}`}>{entry.emoji}</span>
                     <span className="text-[10px] hidden md:inline font-mono opacity-70 truncate max-w-[50px] bg-white/5 px-1 py-0.5 rounded">
                       {entry.subject}
                     </span>
@@ -270,19 +244,6 @@ export const CalendarView: React.FC<CalendarViewProps> = ({ entries, onSelectDat
             </motion.div>
           );
         })}
-      </div>
-
-      {/* Footer Details Guide */}
-      <div className="p-4 rounded-xl glass-panel flex flex-wrap gap-4 items-center justify-center text-xs font-mono opacity-70">
-        <span className="opacity-50">Mood colors:</span>
-        <div className="flex flex-wrap gap-3">
-          {Object.entries(MOOD_COLORS).map(([mood, colorClass]) => (
-            <div key={mood} className="flex items-center gap-1.5">
-              <div className={`w-2 h-2 rounded-full ${colorClass.split(" ")[0]}`} />
-              <span className="text-[10px]">{mood}</span>
-            </div>
-          ))}
-        </div>
       </div>
     </div>
   );

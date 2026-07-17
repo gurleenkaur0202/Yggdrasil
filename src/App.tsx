@@ -30,9 +30,9 @@ import { CalendarView } from "./components/CalendarView";
 import { DiaryView } from "./components/DiaryView";
 import { TaskView } from "./components/TaskView";
 import { GoalsView } from "./components/GoalsView";
-import { MemoryCapsule } from "./components/MemoryCapsule";
 import { StatsView } from "./components/StatsView";
 import { SettingsView } from "./components/SettingsView";
+import { ProfileModal } from "./components/ProfileModal";
 
 export default function App() {
   // Auth State
@@ -51,9 +51,10 @@ export default function App() {
 
   // Nav State
   const [activeTab, setActiveTab] = useState<
-    "home" | "calendar" | "diary" | "tasks" | "goals" | "capsule" | "stats" | "settings"
+    "home" | "calendar" | "diary" | "tasks" | "goals" | "stats" | "settings"
   >("diary");
   const [selectedDate, setSelectedDate] = useState<string>(new Date().toISOString().split("T")[0]);
+  const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
 
   // Content States
   const [entries, setEntries] = useState<DiaryEntry[]>([]);
@@ -665,7 +666,6 @@ export default function App() {
     { id: "diary", label: "Life Journal", icon: Book },
     { id: "tasks", label: "Schedule", icon: CheckSquare },
     { id: "goals", label: "Visions", icon: Compass },
-    { id: "capsule", label: "Capsule", icon: Mail },
     { id: "stats", label: "Habits", icon: TrendingUp },
     { id: "settings", label: "Settings", icon: Settings },
   ];
@@ -794,22 +794,68 @@ export default function App() {
                     <TreePine className="w-5 h-5 text-[var(--primary-color)]" />
                     <span className="text-lg font-display font-semibold tracking-wide">Yggdrasil</span>
                   </div>
-                  <div className="flex items-center gap-1.5 font-mono text-[10px] opacity-45">
-                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping" />
-                    <span>SECURED</span>
-                  </div>
                 </div>
 
-                {/* Profile mini-card */}
+                {/* Profile interactive card with all details */}
                 {user && (
-                  <div className="p-4 mx-3 my-3 bg-white/5 rounded-2xl border border-white/5 flex items-center gap-3">
-                    <div className="text-2xl w-10 h-10 rounded-xl bg-black/20 flex items-center justify-center">
-                      {user.avatar || "🌳"}
+                  <div
+                    onClick={() => setIsProfileModalOpen(true)}
+                    className="p-4 mx-3 my-3 bg-white/5 hover:bg-white/10 active:scale-98 rounded-2xl border border-white/5 hover:border-white/10 flex flex-col gap-2.5 transition-all cursor-pointer group relative overflow-hidden"
+                  >
+                    {/* Glow effect on hover */}
+                    <div className="absolute inset-0 bg-gradient-to-r from-[var(--primary-color)]/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+
+                    <div className="flex items-center gap-3 relative z-10">
+                      <div className="text-2xl w-10 h-10 rounded-xl bg-black/20 flex items-center justify-center relative shrink-0">
+                        {user.avatar || "🌳"}
+                        <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity rounded-xl flex items-center justify-center">
+                          <Edit2 className="w-4 h-4 text-white" />
+                        </div>
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <h4 className="text-sm font-semibold truncate text-white group-hover:text-[var(--primary-color)] transition-colors flex items-center gap-1.5">
+                          {user.name}
+                          <Edit2 className="w-3 h-3 text-slate-400 opacity-0 group-hover:opacity-100 transition-opacity" />
+                        </h4>
+                        <p className="text-[10px] font-mono opacity-50 truncate">{user.email}</p>
+                      </div>
                     </div>
-                    <div className="flex-1 min-w-0">
-                      <h4 className="text-sm font-semibold truncate text-white">{user.name}</h4>
-                      <p className="text-[10px] font-mono opacity-50 truncate">{user.email}</p>
-                    </div>
+
+                    {/* All about details shows in this section */}
+                    {(user.quote || user.occupation || user.studyField || user.birthday || user.bio) && (
+                      <div className="pt-2.5 border-t border-white/10 space-y-2 text-[11px] font-mono relative z-10">
+                        {user.quote && (
+                          <div className="text-[11px] italic text-[var(--primary-color)] font-sans border-l-2 border-[var(--primary-color)]/30 pl-2 leading-tight">
+                            "{user.quote}"
+                          </div>
+                        )}
+                        <div className="space-y-1 opacity-75">
+                          {user.occupation && (
+                            <div className="flex items-center gap-1.5 text-slate-300">
+                              <span className="text-xs opacity-65">💼</span>
+                              <span className="truncate">{user.occupation}</span>
+                            </div>
+                          )}
+                          {user.studyField && (
+                            <div className="flex items-center gap-1.5 text-slate-300">
+                              <span className="text-xs opacity-65">🎓</span>
+                              <span className="truncate">{user.studyField}</span>
+                            </div>
+                          )}
+                          {user.birthday && (
+                            <div className="flex items-center gap-1.5 text-slate-300">
+                              <span className="text-xs opacity-65">🎂</span>
+                              <span>{user.birthday}</span>
+                            </div>
+                          )}
+                        </div>
+                        {user.bio && (
+                          <div className="text-slate-400 font-sans text-[11px] leading-relaxed line-clamp-2 bg-black/25 p-1.5 rounded-lg border border-white/5">
+                            {user.bio}
+                          </div>
+                        )}
+                      </div>
+                    )}
                   </div>
                 )}
 
@@ -839,17 +885,6 @@ export default function App() {
 
               {/* Sidebar Footer details */}
               <div className="p-4 border-t border-white/10 hidden md:flex flex-col gap-2.5">
-                <div className="bg-black/35 rounded-xl p-3 border border-white/5 text-center font-mono">
-                  <span className="text-[10px] opacity-40 block uppercase">Chamber Clock</span>
-                  <span className="text-xs font-bold text-slate-200 tracking-wider">
-                    {currentTime.toLocaleTimeString(undefined, {
-                      hour: "2-digit",
-                      minute: "2-digit",
-                      second: "2-digit",
-                      hour12: false,
-                    })}
-                  </span>
-                </div>
 
                 <button
                   onClick={handleLogout}
@@ -867,24 +902,23 @@ export default function App() {
               <header className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 pb-4 border-b border-white/5">
                 <div className="space-y-0.5">
                   <h1 className="text-2xl font-display font-semibold tracking-tight text-white capitalize">
-                    {activeTab === "home" ? "Daily Dashboard" : activeTab === "capsule" ? "Memory Letters" : activeTab}
+                    {activeTab === "home" ? "Daily Dashboard" : activeTab}
                   </h1>
                   <p className="text-xs opacity-50">
                     Welcome back, {user?.name}. Your digital life ledger is synchronized.
                   </p>
                 </div>
 
-                {/* Selected Date indicator widget */}
-                <div className="flex items-center gap-2 bg-black/25 px-4 py-2 rounded-2xl border border-white/5 text-xs font-mono">
-                  <Clock className="w-4 h-4 text-[var(--primary-color)]" />
-                  <span className="opacity-60">Canvas Target:</span>
-                  <span className="text-[var(--primary-color)] font-bold">{getSelectedDayLabel()}</span>
-                  <button
-                    onClick={() => handleCalendarSelectDate(new Date().toISOString().split("T")[0])}
-                    className="px-2 py-0.5 rounded bg-white/5 hover:bg-white/10 border border-white/5 text-[9px]"
-                  >
-                    TODAY
-                  </button>
+                <div className="flex items-center gap-4">
+                  {/* Time-only clock */}
+                  <div className="text-sm font-bold text-slate-200 tracking-wider font-mono">
+                    {currentTime.toLocaleTimeString(undefined, {
+                      hour: "2-digit",
+                      minute: "2-digit",
+                      second: "2-digit",
+                      hour12: false,
+                    })}
+                  </div>
                 </div>
               </header>
 
@@ -931,10 +965,6 @@ export default function App() {
                   />
                 )}
 
-                {activeTab === "capsule" && (
-                  <MemoryCapsule letters={letters} onSaveLetter={handleSaveLetter} />
-                )}
-
                 {activeTab === "stats" && (
                   <StatsView
                     habits={habits}
@@ -964,6 +994,15 @@ export default function App() {
           </motion.div>
         )}
       </AnimatePresence>
+
+      {user && (
+        <ProfileModal
+          isOpen={isProfileModalOpen}
+          onClose={() => setIsProfileModalOpen(false)}
+          user={user}
+          onUpdateProfile={handleUpdateProfile}
+        />
+      )}
     </div>
   );
 }

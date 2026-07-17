@@ -822,6 +822,9 @@ app.post("/api/ai/assist", authMiddleware, async (req: any, res) => {
       case "motivate":
         prompt = `The user is feeling stressed, tired, or seeking inspiration. Generate a deeply comforting, powerful, custom daily motivation message or quote. Mention the eternal growth of Yggdrasil's roots and branches.`;
         break;
+      case "ask":
+        prompt = `Please answer the following question or respond to the user's thought. You can provide any guidance, insight, or information they seek. Give a helpful, empathetic, and wise answer:\n\n"${text}"`;
+        break;
       default:
         return res.status(400).json({ error: "Invalid action." });
     }
@@ -836,6 +839,7 @@ app.post("/api/ai/assist", authMiddleware, async (req: any, res) => {
       else if (action === "todo") fallbackText = "- [ ] Reflect on today's journey\n- [ ] Dedicate 15 minutes to quiet meditation\n- [ ] Plan goals for tomorrow";
       else if (action === "prompt") fallbackText = "🌱 Journal Prompt: 'If you were a tree, what kind of weather did your branches weather today, and what leaves did you shed to make room for new growth?'";
       else if (action === "motivate") fallbackText = "✨ Motivation: 'The tallest trees grow slowest. Do not fear the quiet, cold winters of your journey; your roots are deepening in the dark, preparing for an abundant spring.'";
+      else if (action === "ask") fallbackText = "I am Yggdrasil, always here to guide you. (Configure your GEMINI_API_KEY to ask dynamic questions and receive deep insights!)";
       
       return res.json({ result: fallbackText });
     }

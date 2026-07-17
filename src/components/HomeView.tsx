@@ -258,50 +258,6 @@ export const HomeView: React.FC<HomeViewProps> = ({
         </motion.div>
       </div>
 
-      {/* Yggdrasil Memory Heatmap (GitHub contributions style) */}
-      <motion.div
-        initial={{ opacity: 0, y: 10 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="p-6 rounded-2xl glass-panel"
-      >
-        <div className="flex items-center justify-between mb-4">
-          <h3 className="text-sm font-semibold tracking-wide flex items-center gap-2">
-            <CalIcon className="w-4 h-4 text-[var(--primary-color)]" /> Memory Canopy Heatmap
-          </h3>
-          <span className="text-xs opacity-50 font-mono">Last 180 Days</span>
-        </div>
-
-        <div className="overflow-x-auto pb-2 scrollbar-thin">
-          <div className="min-w-[550px] flex gap-1 justify-center py-2">
-            {/* Week-by-week grid columns */}
-            {Array.from({ length: 26 }).map((_, colIdx) => (
-              <div key={colIdx} className="flex flex-col gap-1">
-                {Array.from({ length: 7 }).map((_, rowIdx) => {
-                  const dataIndex = colIdx * 7 + rowIdx;
-                  const item = heatmapData[dataIndex];
-                  if (!item) return null;
-                  return (
-                    <div
-                      key={rowIdx}
-                      title={`${item.dateStr}: ${item.active ? "Entry Logged" : "No journal entry"}`}
-                      className={`w-3.5 h-3.5 rounded-sm transition-all duration-300 ${
-                        item.active
-                          ? "bg-[var(--primary-color)] shadow-sm shadow-[var(--primary-color)]/30 scale-110"
-                          : "bg-white/5 hover:bg-white/10"
-                      }`}
-                    />
-                  );
-                })}
-              </div>
-            ))}
-          </div>
-          <div className="flex justify-between text-[10px] font-mono opacity-50 max-w-[550px] mx-auto px-2 mt-1">
-            <span>6 Months Ago</span>
-            <span>Today</span>
-          </div>
-        </div>
-      </motion.div>
-
       {/* Recent Entries */}
       <div className="space-y-4">
         <div className="flex items-center justify-between">
